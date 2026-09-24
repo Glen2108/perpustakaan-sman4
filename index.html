@@ -4,92 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perpustakaan SMA Negeri 4 Manado</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Firebase SDK Modular -->
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Firebase SDK Modular (v10) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // KELOLA KONFIGURASI FIREBASE ANDA DI SINI
+        // Konfigurasi menggunakan Realtime Database Anda
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            databaseURL: "https://perpustakaan-sman4-default-rtdb.firebaseio.com/"
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        const db = getDatabase(app);
 
+        // Export ke global scope
         window.db = db;
-        window.auth = auth;
+        window.dbRef = ref;
+        window.dbSet = set;
+        window.dbPush = push;
+        window.dbOnValue = onValue;
+        window.dbRemove = remove;
+        window.dbUpdate = update;
     </script>
-    <style>
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Header / Navbar -->
-    <header class="bg-slate-800/80 backdrop-filter blur-md border-b border-slate-700 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+    <!-- Navbar -->
+    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-3">
                 <div class="p-2 bg-blue-600 rounded-lg text-white">
                     <i data-lucide="book-open" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight">Perpustakaan SMAN 4 Manado</h1>
+                    <h1 class="font-bold text-base md:text-lg leading-tight text-white">Perpustakaan SMAN 4 Manado</h1>
                     <p class="text-xs text-slate-400">NPP: 7171051E1000002</p>
                 </div>
             </div>
-            <nav class="flex items-center gap-4">
-                <button onclick="showSection('katalog')" class="hover:text-blue-400 px-3 py-2 text-sm font-medium">Katalog Fisik</button>
-                <button onclick="showSection('duta')" class="hover:text-blue-400 px-3 py-2 text-sm font-medium">Duta Literasi</button>
-                <button onclick="showSection('event')" class="hover:text-blue-400 px-3 py-2 text-sm font-medium">Agenda Event</button>
-                <button id="adminBtn" onclick="toggleAdminModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition">
-                    <i data-lucide="lock" class="w-4 h-4"></i> Login Petugas
+            <nav class="flex items-center gap-2 text-xs md:text-sm">
+                <button onclick="switchTab('katalog')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Katalog Buku</button>
+                <button onclick="switchTab('duta')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Duta Literasi</button>
+                <button onclick="switchTab('event')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Agenda Event</button>
+                <button onclick="switchTab('anggota')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Anggota</button>
+                <button onclick="openAdminModal()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 ml-2">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> Mode Petugas
                 </button>
             </nav>
         </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 space-y-6">
 
-        <!-- Hero Information -->
-        <section class="mb-8 p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-800 border border-slate-700">
-            <div class="max-w-3xl">
-                <span class="inline-block px-3 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full font-semibold mb-3">Layanan Fisik Perpustakaan</span>
-                <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-2">Cari Buku & Ambil Langsung di Perpustakaan</h2>
-                <p class="text-slate-300 text-sm mb-4">Gunakan catalog online ini untuk mengecek ketersediaan buku fisik di rak sebelum meminjam langsung ke petugas perpustakaan.</p>
-                <div class="text-xs text-slate-400 flex flex-col md:flex-row gap-2 md:gap-6">
-                    <span><strong>Kepala Perpustakaan:</strong> Glendy A. Taawoeda, S.Pd</span>
-                    <span><strong>Alamat:</strong> Jl. Manguni 11, Perkamil, Paal Dua, Manado</span>
+        <!-- Banner Informasi -->
+        <div class="bg-gradient-to-r from-blue-900 via-slate-800 to-indigo-950 p-6 rounded-2xl border border-slate-700 shadow-xl">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <span class="bg-blue-500/20 text-blue-300 text-xs px-2.5 py-1 rounded-full font-medium">Layanan Fisik Perpustakaan</span>
+                    <h2 class="text-xl md:text-2xl font-bold text-white mt-2">Pencarian Koleksi Buku Fisik</h2>
+                    <p class="text-xs md:text-sm text-slate-300 mt-1">Cek lokasi rak dan ketersediaan stok fisik sebelum datang meminjam langsung di ruang perpustakaan.</p>
+                </div>
+                <div class="text-xs text-slate-400 space-y-1 border-l-2 border-blue-500 pl-3">
+                    <p><strong>Kepala Perpustakaan:</strong> Glendy A. Taawoeda, S.Pd</p>
+                    <p><strong>Alamat:</strong> Jl. Manguni 11, Kel. Perkamil, Kec. Paal Dua, Kota Manado</p>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Section: Katalog Buku -->
-        <section id="sec-katalog" class="space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h3 class="text-xl font-bold flex items-center gap-2">
-                    <i data-lucide="library" class="text-blue-400"></i> Katalog Buku Fisik
-                </h3>
-                <!-- Search & Category Filter -->
-                <div class="flex flex-wrap gap-2">
-                    <input type="text" placeholder="Cari judul/penulis..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
-                    <select class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+        <!-- TAB 1: KATALOG BUKU -->
+        <section id="tab-katalog" class="space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="library" class="text-blue-400"></i> Katalog Buku Fisik</h3>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <input type="text" id="searchBook" oninput="filterBooks()" placeholder="Cari judul / penulis..." class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-2 w-full sm:w-64 focus:outline-none focus:border-blue-500">
+                    <select id="filterCategory" onchange="filterBooks()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
                         <option value="">Semua Kategori</option>
                         <option value="Fiksi">Fiksi</option>
                         <option value="Non-Fiksi">Non-Fiksi</option>
@@ -100,62 +95,292 @@
                     </select>
                 </div>
             </div>
-
-            <!-- List Buku -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="bookGrid">
-                <!-- Data Buku dummy/Firestore akan dirender di sini -->
-                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-between">
-                    <div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-950 px-2 py-0.5 rounded">Fiksi</span>
-                        <h4 class="font-semibold text-white mt-2">Laskar Pelangi</h4>
-                        <p class="text-xs text-slate-400">Penulis: Andrea Hirata</p>
-                        <p class="text-xs text-slate-500 mt-2">Lokasi Rak: <strong>Rak A-03</strong></p>
-                    </div>
-                    <div class="mt-4 pt-3 border-t border-slate-700/50 flex justify-between items-center text-xs">
-                        <span class="text-emerald-400 font-medium">Tersedia (3 Eksemplar)</span>
-                        <span class="text-slate-400">Fisik</span>
-                    </div>
-                </div>
-            </div>
+            <div id="bookGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
         </section>
 
-        <!-- Section: Duta Literasi -->
-        <section id="sec-duta" class="hidden space-y-6">
-            <h3 class="text-xl font-bold flex items-center gap-2">
-                <i data-lucide="award" class="text-amber-400"></i> Calon & Duta Literasi SMAN 4 Manado
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="dutaGrid">
-                <!-- Content Duta -->
-            </div>
+        <!-- TAB 2: DUTA LITERASI -->
+        <section id="tab-duta" class="hidden space-y-4">
+            <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="award" class="text-amber-400"></i> Duta & Calon Duta Literasi</h3>
+            <div id="dutaGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </section>
 
-        <!-- Section: Agenda Event -->
-        <section id="sec-event" class="hidden space-y-6">
-            <h3 class="text-xl font-bold flex items-center gap-2">
-                <i data-lucide="calendar" class="text-purple-400"></i> Agenda & Event Perpustakaan
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="eventGrid">
-                <!-- Content Event -->
-            </div>
+        <!-- TAB 3: AGENDA EVENT -->
+        <section id="tab-event" class="hidden space-y-4">
+            <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="calendar" class="text-purple-400"></i> Agenda & Event Mendatang</h3>
+            <div id="eventGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
+
+        <!-- TAB 4: ANGGOTA -->
+        <section id="tab-anggota" class="hidden space-y-4">
+            <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="users" class="text-emerald-400"></i> Daftar Anggota Perpustakaan</h3>
+            <div id="anggotaGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+
     </main>
 
+    <!-- Modal Panel Admin/Petugas -->
+    <div id="adminModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 text-xs">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5"></i> Panel Kelola Petugas Perpustakaan
+                </h3>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <!-- Form Tambah Buku -->
+            <form onsubmit="saveBook(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                <h4 class="font-bold text-blue-400 text-sm">Tambah / Edit Buku Fisik</h4>
+                <input type="hidden" id="bookId">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="bTitle" placeholder="Judul Buku" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="text" id="bAuthor" placeholder="Penulis" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <select id="bCategory" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                        <option value="Fiksi">Fiksi</option>
+                        <option value="Non-Fiksi">Non-Fiksi</option>
+                        <option value="Referensi">Referensi</option>
+                        <option value="Komik">Komik</option>
+                        <option value="Majalah">Majalah</option>
+                        <option value="Horor">Horor</option>
+                    </select>
+                    <input type="text" id="bShelf" placeholder="Kode Rak (mis. Rak A-02)" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="number" id="bStock" placeholder="Jumlah Eksemplar Fisik" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Buku</button>
+            </form>
+
+            <!-- Form Tambah Anggota -->
+            <form onsubmit="saveMember(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                <h4 class="font-bold text-emerald-400 text-sm">Tambah Anggota</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="mNisn" placeholder="NISN / NIP" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="text" id="mName" placeholder="Nama Lengkap" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="text" id="mClass" placeholder="Kelas / Jabatan" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                </div>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Anggota</button>
+            </form>
+
+            <!-- Form Tambah Duta Literasi -->
+            <form onsubmit="saveDuta(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                <h4 class="font-bold text-amber-400 text-sm">Tambah Calon / Duta Literasi</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="dName" placeholder="Nama Calon Duta" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="text" id="dClass" placeholder="Kelas" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <select id="dStatus" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                        <option value="Calon Duta">Calon Duta</option>
+                        <option value="Duta Literasi Terpilih">Duta Literasi Terpilih</option>
+                    </select>
+                </div>
+                <button type="submit" class="bg-amber-600 hover:bg-amber-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Duta</button>
+            </form>
+
+            <!-- Form Tambah Event -->
+            <form onsubmit="saveEvent(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                <h4 class="font-bold text-purple-400 text-sm">Tambah Event Perpustakaan</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="eTitle" placeholder="Nama Agenda/Event" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="date" id="eDate" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="text" id="eLoc" placeholder="Lokasi Kegiatan" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                </div>
+                <button type="submit" class="bg-purple-600 hover:bg-purple-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Event</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Footer -->
-    <footer class="bg-slate-950 border-t border-slate-800 mt-12 py-6 text-center text-xs text-slate-500">
-        <p class="font-medium text-slate-400">Perpustakaan SMA Negeri 4 Manado</p>
+    <footer class="bg-slate-950 border-t border-slate-800 mt-8 py-6 text-center text-xs text-slate-500 space-y-1">
+        <p class="font-semibold text-slate-400">Perpustakaan SMA Negeri 4 Manado</p>
         <p>Jl. Manguni 11, Kel. Perkamil, Kec. Paal Dua, Kota Manado, Sulawesi Utara</p>
-        <p class="mt-2 text-slate-600">Copyright &copy; 2026 Perpustakaan SMAN 4 Manado. Hak Cipta dan Dilindungi Undang-Undang.</p>
+        <p class="text-slate-600 pt-2">&copy; 2026 Perpustakaan SMAN 4 Manado. Hak Cipta dan Dilindungi Undang-Undang.</p>
     </footer>
 
+    <!-- Client Script -->
     <script>
-        lucide.createIcons();
+        let allBooks = {};
 
-        function showSection(sectionId) {
-            document.getElementById('sec-katalog').classList.add('hidden');
-            document.getElementById('sec-duta').classList.add('hidden');
-            document.getElementById('sec-event').classList.add('hidden');
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            listenRealtimeData();
+        });
 
-            document.getElementById('sec-' + sectionId).classList.remove('hidden');
+        function switchTab(tabName) {
+            ['katalog', 'duta', 'event', 'anggota'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        }
+
+        function openAdminModal() { document.getElementById('adminModal').classList.remove('hidden'); }
+        function closeAdminModal() { document.getElementById('adminModal').classList.add('hidden'); }
+
+        // Menerima Data Realtime dari Firebase
+        function listenRealtimeData() {
+            // Buku
+            window.dbOnValue(window.dbRef(window.db, 'books'), (snapshot) => {
+                allBooks = snapshot.val() || {};
+                renderBooks(allBooks);
+            });
+            // Duta Literasi
+            window.dbOnValue(window.dbRef(window.db, 'duta'), (snapshot) => {
+                renderDuta(snapshot.val() || {});
+            });
+            // Event
+            window.dbOnValue(window.dbRef(window.db, 'events'), (snapshot) => {
+                renderEvents(snapshot.val() || {});
+            });
+            // Anggota
+            window.dbOnValue(window.dbRef(window.db, 'members'), (snapshot) => {
+                renderMembers(snapshot.val() || {});
+            });
+        }
+
+        // Render Katalog Buku
+        function renderBooks(data) {
+            const grid = document.getElementById('bookGrid');
+            grid.innerHTML = '';
+            Object.keys(data).forEach(id => {
+                const b = data[id];
+                grid.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700/80 p-4 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-950 px-2 py-0.5 rounded">${b.category}</span>
+                            <h4 class="font-semibold text-white mt-2">${b.title}</h4>
+                            <p class="text-xs text-slate-400">Penulis: ${b.author}</p>
+                            <p class="text-xs text-slate-400 mt-2">Lokasi Rak: <strong class="text-slate-200">${b.shelf}</strong></p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/50 flex justify-between items-center text-xs">
+                            <span class="${b.stock > 0 ? 'text-emerald-400' : 'text-red-400'} font-medium">
+                                ${b.stock > 0 ? 'Tersedia (' + b.stock + ' Eks)' : 'Habis'}
+                            </span>
+                            <button onclick="deleteItem('books', '${id}')" class="text-red-400 hover:text-red-300">Hapus</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Render Duta
+        function renderDuta(data) {
+            const grid = document.getElementById('dutaGrid');
+            grid.innerHTML = '';
+            Object.keys(data).forEach(id => {
+                const d = data[id];
+                grid.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
+                        <div>
+                            <span class="text-[10px] font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded">${d.status}</span>
+                            <h4 class="font-bold text-white mt-1">${d.name}</h4>
+                            <p class="text-xs text-slate-400">Kelas: ${d.className}</p>
+                        </div>
+                        <button onclick="deleteItem('duta', '${id}')" class="text-xs text-red-400">Hapus</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Render Event
+        function renderEvents(data) {
+            const grid = document.getElementById('eventGrid');
+            grid.innerHTML = '';
+            Object.keys(data).forEach(id => {
+                const e = data[id];
+                grid.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] text-purple-400 bg-purple-950 px-2 py-0.5 rounded font-bold">${e.date}</span>
+                            <h4 class="font-bold text-white mt-1">${e.title}</h4>
+                            <p class="text-xs text-slate-400 mt-1">📍 ${e.location}</p>
+                        </div>
+                        <button onclick="deleteItem('events', '${id}')" class="text-xs text-red-400">Hapus</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Render Anggota
+        function renderMembers(data) {
+            const grid = document.getElementById('anggotaGrid');
+            grid.innerHTML = '';
+            Object.keys(data).forEach(id => {
+                const m = data[id];
+                grid.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
+                        <div>
+                            <span class="text-[10px] text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded font-bold">NISN/NIP: ${m.nisn}</span>
+                            <h4 class="font-bold text-white mt-1">${m.name}</h4>
+                            <p class="text-xs text-slate-400">${m.className}</p>
+                        </div>
+                        <button onclick="deleteItem('members', '${id}')" class="text-xs text-red-400">Hapus</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Simpan Data Ke Firebase Realtime Database
+        function saveBook(e) {
+            e.preventDefault();
+            const newRef = window.dbPush(window.dbRef(window.db, 'books'));
+            window.dbSet(newRef, {
+                title: document.getElementById('bTitle').value,
+                author: document.getElementById('bAuthor').value,
+                category: document.getElementById('bCategory').value,
+                shelf: document.getElementById('bShelf').value,
+                stock: parseInt(document.getElementById('bStock').value)
+            });
+            Swal.fire('Berhasil!', 'Buku berhasil disimpan ke Realtime Database', 'success');
+        }
+
+        function saveMember(e) {
+            e.preventDefault();
+            const newRef = window.dbPush(window.dbRef(window.db, 'members'));
+            window.dbSet(newRef, {
+                nisn: document.getElementById('mNisn').value,
+                name: document.getElementById('mName').value,
+                className: document.getElementById('mClass').value
+            });
+            Swal.fire('Berhasil!', 'Anggota berhasil ditambahkan', 'success');
+        }
+
+        function saveDuta(e) {
+            e.preventDefault();
+            const newRef = window.dbPush(window.dbRef(window.db, 'duta'));
+            window.dbSet(newRef, {
+                name: document.getElementById('dName').value,
+                className: document.getElementById('dClass').value,
+                status: document.getElementById('dStatus').value
+            });
+            Swal.fire('Berhasil!', 'Data Duta Literasi disimpan', 'success');
+        }
+
+        function saveEvent(e) {
+            e.preventDefault();
+            const newRef = window.dbPush(window.dbRef(window.db, 'events'));
+            window.dbSet(newRef, {
+                title: document.getElementById('eTitle').value,
+                date: document.getElementById('eDate').value,
+                location: document.getElementById('eLoc').value
+            });
+            Swal.fire('Berhasil!', 'Agenda Event disimpan', 'success');
+        }
+
+        function deleteItem(path, id) {
+            if(confirm('Hapus data ini dari Realtime Database?')) {
+                window.dbRemove(window.dbRef(window.db, `${path}/${id}`));
+            }
+        }
+
+        function filterBooks() {
+            const query = document.getElementById('searchBook').value.toLowerCase();
+            const cat = document.getElementById('filterCategory').value;
+            const filtered = {};
+
+            Object.keys(allBooks).forEach(id => {
+                const b = allBooks[id];
+                const matchQuery = b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query);
+                const matchCat = cat === '' || b.category === cat;
+                if(matchQuery && matchCat) filtered[id] = b;
+            });
+            renderBooks(filtered);
         }
     </script>
 </body>
