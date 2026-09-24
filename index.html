@@ -14,7 +14,48 @@
     <!-- Firebase SDK Modular (v10) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+    databaseURL: "https://perpustakaan-sman4-default-rtdb.firebaseio.com/"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+// Menangani status login petugas secara realtime
+onAuthStateChanged(auth, (user) => {
+    const adminBtn = document.getElementById('adminBtn');
+    if (user) {
+        console.log("Petugas terautentikasi:", user.email);
+        adminBtn.innerHTML = `🔒 Logout (${user.email.split('@')[0]})`;
+        adminBtn.onclick = logoutAdmin;
+    } else {
+        adminBtn.innerHTML = `🔑 Login Petugas`;
+        adminBtn.onclick = openAdminLoginModal;
+    }
+});
+
+// Fungsi Login Petugas
+window.loginAdmin = function(email, password) {
+    signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+            Swal.fire('Berhasil!', 'Anda berhasil login sebagai Petugas.', 'success');
+            closeLoginModal();
+        })
+        .catch((error) => {
+            Swal.fire('Gagal Login', 'Email atau password salah!', 'error');
+        });
+};
+
+// Fungsi Logout Petugas
+window.logoutAdmin = function() {
+    signOut(auth).then(() => {
+        Swal.fire('Logout', 'Anda telah keluar dari mode petugas.', 'info');
+    });
+};
 
         // Konfigurasi menggunakan Realtime Database Anda
         const firebaseConfig = {
