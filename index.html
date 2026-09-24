@@ -17,9 +17,16 @@
         import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            databaseURL: "https://perpustakaan-sman4-default-rtdb.firebaseio.com/"
-        };
+        // GANTI BAGIAN INI DI index.html
+const firebaseConfig = {
+    		apiKey: "AIzaSyXXXXXXXXXXXXXX", // WAJIB ADA untuk Login Auth
+    		authDomain: "perpustakaan-sman4.firebaseapp.com", // WAJIB ADA
+    		databaseURL: "https://perpustakaan-sman4-default-rtdb.firebaseio.com/",
+    		projectId: "perpustakaan-sman4",
+    		storageBucket: "perpustakaan-sman4.appspot.com",
+    		messagingSenderId: "1234567890",
+    		appId: "1:1234567890:web:abcdef123456"
+	};
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
