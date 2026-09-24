@@ -14,74 +14,63 @@
     <!-- Firebase SDK Modular (v10) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const firebaseConfig = {
-    databaseURL: "https://perpustakaan-sman4-default-rtdb.firebaseio.com/"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-
-// Menangani status login petugas secara realtime
-onAuthStateChanged(auth, (user) => {
-    const adminBtn = document.getElementById('adminBtn');
-    if (user) {
-        console.log("Petugas terautentikasi:", user.email);
-        adminBtn.innerHTML = `🔒 Logout (${user.email.split('@')[0]})`;
-        adminBtn.onclick = logoutAdmin;
-    } else {
-        adminBtn.innerHTML = `🔑 Login Petugas`;
-        adminBtn.onclick = openAdminLoginModal;
-    }
-});
-
-// Fungsi Login Petugas
-window.loginAdmin = function(email, password) {
-    signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-            Swal.fire('Berhasil!', 'Anda berhasil login sebagai Petugas.', 'success');
-            closeLoginModal();
-        })
-        .catch((error) => {
-            Swal.fire('Gagal Login', 'Email atau password salah!', 'error');
-        });
-};
-
-// Fungsi Logout Petugas
-window.logoutAdmin = function() {
-    signOut(auth).then(() => {
-        Swal.fire('Logout', 'Anda telah keluar dari mode petugas.', 'info');
-    });
-};
-
-        // Konfigurasi menggunakan Realtime Database Anda
         const firebaseConfig = {
             databaseURL: "https://perpustakaan-sman4-default-rtdb.firebaseio.com/"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
 
-        // Export ke global scope
+        // Global Exports
         window.db = db;
+        window.auth = auth;
         window.dbRef = ref;
         window.dbSet = set;
         window.dbPush = push;
         window.dbOnValue = onValue;
         window.dbRemove = remove;
         window.dbUpdate = update;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
+
+        // Monitor Auth State
+        onAuthStateChanged(auth, (user) => {
+            const statusBtn = document.getElementById('authStatusBtn');
+            const adminPanelBtn = document.getElementById('adminPanelBtn');
+            if (user) {
+                statusBtn.innerHTML = `<i data-lucide="log-out" class="w-4 h-4"></i> Logout (${user.email.split('@')[0]})`;
+                statusBtn.onclick = logoutPetugas;
+                statusBtn.className = "bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5";
+                adminPanelBtn.classList.remove('hidden');
+            } else {
+                statusBtn.innerHTML = `<i data-lucide="key-round" class="w-4 h-4"></i> Login Petugas`;
+                statusBtn.onclick = openLoginModal;
+                statusBtn.className = "bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5";
+                adminPanelBtn.classList.add('hidden');
+                closeAdminModal();
+            }
+            lucide.createIcons();
+        });
     </script>
+    <style>
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Navbar -->
+    <!-- Header / Navbar -->
     <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-3">
-                <div class="p-2 bg-blue-600 rounded-lg text-white">
+                <div class="p-2.5 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-600/30">
                     <i data-lucide="book-open" class="w-6 h-6"></i>
                 </div>
                 <div>
@@ -90,93 +79,164 @@ window.logoutAdmin = function() {
                 </div>
             </div>
             <nav class="flex items-center gap-2 text-xs md:text-sm">
-                <button onclick="switchTab('katalog')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Katalog Buku</button>
-                <button onclick="switchTab('duta')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Duta Literasi</button>
-                <button onclick="switchTab('event')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Agenda Event</button>
-                <button onclick="switchTab('anggota')" class="px-3 py-1.5 rounded hover:bg-slate-700 text-slate-200">Anggota</button>
-                <button onclick="openAdminModal()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 ml-2">
-                    <i data-lucide="shield-check" class="w-4 h-4"></i> Mode Petugas
+                <button onclick="switchTab('beranda')" class="px-3 py-1.5 rounded-lg hover:bg-slate-700 text-slate-200">Beranda & Katalog</button>
+                <button onclick="switchTab('event')" class="px-3 py-1.5 rounded-lg hover:bg-slate-700 text-slate-200">Agenda Event</button>
+                <button id="adminPanelBtn" onclick="openAdminModal()" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Panel Admin
+                </button>
+                <button id="authStatusBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <i data-lucide="key-round" class="w-4 h-4"></i> Login Petugas
                 </button>
             </nav>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 space-y-6">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 space-y-8">
 
-        <!-- Banner Informasi -->
-        <div class="bg-gradient-to-r from-blue-900 via-slate-800 to-indigo-950 p-6 rounded-2xl border border-slate-700 shadow-xl">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <span class="bg-blue-500/20 text-blue-300 text-xs px-2.5 py-1 rounded-full font-medium">Layanan Fisik Perpustakaan</span>
-                    <h2 class="text-xl md:text-2xl font-bold text-white mt-2">Pencarian Koleksi Buku Fisik</h2>
-                    <p class="text-xs md:text-sm text-slate-300 mt-1">Cek lokasi rak dan ketersediaan stok fisik sebelum datang meminjam langsung di ruang perpustakaan.</p>
-                </div>
-                <div class="text-xs text-slate-400 space-y-1 border-l-2 border-blue-500 pl-3">
-                    <p><strong>Kepala Perpustakaan:</strong> Glendy A. Taawoeda, S.Pd</p>
-                    <p><strong>Alamat:</strong> Jl. Manguni 11, Kel. Perkamil, Kec. Paal Dua, Kota Manado</p>
+        <!-- TAB BERANDA & KATALOG -->
+        <div id="tab-beranda" class="space-y-8">
+
+            <!-- Banner Identitas Sekolah & Perpustakaan -->
+            <div class="bg-gradient-to-r from-blue-950 via-slate-800 to-indigo-950 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-2xl relative overflow-hidden">
+                <div class="relative z-10 flex flex-col lg:flex-row justify-between gap-6">
+                    <div class="space-y-3 max-w-2xl">
+                        <span class="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs px-3 py-1 rounded-full font-semibold inline-flex items-center gap-1.5">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Layanan Fisik Terintegrasi
+                        </span>
+                        <h2 class="text-2xl md:text-3xl font-extrabold text-white">Sistem Informasi Perpustakaan SMAN 4 Manado</h2>
+                        <p class="text-xs md:text-sm text-slate-300 leading-relaxed">
+                            Aplikasi pencarian buku fisik di perpustakaan sekolah. Pilih buku, cek ketersediaan stok fisik di rak, dan kunjungi langsung perpustakaan untuk peminjaman.
+                        </p>
+                        <div class="pt-2 text-xs text-slate-400 space-y-1 border-l-2 border-blue-500 pl-4">
+                            <p><strong>Kepala Perpustakaan:</strong> Glendy A. Taawoeda, S.Pd</p>
+                            <p><strong>Alamat:</strong> Jl. Manguni 11, Kel. Perkamil, Kec. Paal Dua, Kota Manado, Sulawesi Utara</p>
+                        </div>
+                    </div>
+
+                    <!-- Kalender Interaktif Sederhana -->
+                    <div class="glass-card p-4 rounded-xl border border-slate-700 w-full lg:w-80 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-xs text-blue-400 flex items-center gap-1.5">
+                                <i data-lucide="calendar" class="w-4 h-4"></i> Kalender Hari Ini
+                            </h4>
+                            <span id="currentDateDisplay" class="text-[11px] text-slate-400 font-medium"></span>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 rounded-lg text-center space-y-1">
+                            <div id="calendarDay" class="text-3xl font-black text-blue-400">--</div>
+                            <div id="calendarMonthYear" class="text-xs font-semibold text-slate-300">--</div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Katalog Buku Fisik Ruangan -->
+            <section class="space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="library" class="text-blue-400"></i> Katalog Buku Fisik Ruangan
+                        </h3>
+                        <p class="text-xs text-slate-400">Daftar buku yang tersedia langsung di rak fisik perpustakaan</p>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <input type="text" id="searchBook" oninput="filterBooks()" placeholder="Cari judul/pengarang..." class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-2 w-full sm:w-64 focus:outline-none focus:border-blue-500 text-white">
+                        <select id="filterCategory" onchange="filterBooks()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 text-white">
+                            <option value="">Semua Kategori</option>
+                            <option value="Fiksi">Fiksi</option>
+                            <option value="Non-Fiksi">Non-Fiksi</option>
+                            <option value="Referensi">Referensi</option>
+                            <option value="Komik">Komik</option>
+                            <option value="Majalah">Majalah</option>
+                            <option value="Horor">Horor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Grid Katalog Buku -->
+                <div id="bookGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Data Buku Di-render secara Realtime dari Firebase -->
+                </div>
+            </section>
+
+            <!-- Peta Lokasi Google Maps SMA Negeri 4 Manado -->
+            <section class="space-y-3 pt-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="map-pin" class="text-red-400"></i> Lokasi Perpustakaan SMAN 4 Manado
+                </h3>
+                <div class="rounded-2xl overflow-hidden border border-slate-700 shadow-lg h-72 w-full">
+                    <iframe 
+                        title="Lokasi SMAN 4 Manado"
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.471618059868!2d124.86938887483017!3d1.4883492984974375!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32870ab34e022f4b%3A0x867ea321edff6c25!2sSMA%20Negeri%204%20Manado!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid" 
+                        class="w-full h-full border-0" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+            </section>
+
         </div>
 
-        <!-- TAB 1: KATALOG BUKU -->
-        <section id="tab-katalog" class="space-y-4">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="library" class="text-blue-400"></i> Katalog Buku Fisik</h3>
-                <div class="flex gap-2 w-full sm:w-auto">
-                    <input type="text" id="searchBook" oninput="filterBooks()" placeholder="Cari judul / penulis..." class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-2 w-full sm:w-64 focus:outline-none focus:border-blue-500">
-                    <select id="filterCategory" onchange="filterBooks()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
-                        <option value="">Semua Kategori</option>
-                        <option value="Fiksi">Fiksi</option>
-                        <option value="Non-Fiksi">Non-Fiksi</option>
-                        <option value="Referensi">Referensi</option>
-                        <option value="Komik">Komik</option>
-                        <option value="Majalah">Majalah</option>
-                        <option value="Horor">Horor</option>
-                    </select>
-                </div>
-            </div>
-            <div id="bookGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
-        </section>
-
-        <!-- TAB 2: DUTA LITERASI -->
-        <section id="tab-duta" class="hidden space-y-4">
-            <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="award" class="text-amber-400"></i> Duta & Calon Duta Literasi</h3>
-            <div id="dutaGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </section>
-
-        <!-- TAB 3: AGENDA EVENT -->
-        <section id="tab-event" class="hidden space-y-4">
-            <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="calendar" class="text-purple-400"></i> Agenda & Event Mendatang</h3>
+        <!-- TAB EVENT -->
+        <div id="tab-event" class="hidden space-y-4">
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="sparkles" class="text-purple-400"></i> Agenda & Event Literasi Mendatang
+            </h3>
             <div id="eventGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </section>
-
-        <!-- TAB 4: ANGGOTA -->
-        <section id="tab-anggota" class="hidden space-y-4">
-            <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="users" class="text-emerald-400"></i> Daftar Anggota Perpustakaan</h3>
-            <div id="anggotaGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </section>
+        </div>
 
     </main>
 
-    <!-- Modal Panel Admin/Petugas -->
-    <div id="adminModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 text-xs">
+    <!-- Modal Login Petugas -->
+    <div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-4">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-                    <i data-lucide="settings" class="w-5 h-5"></i> Panel Kelola Petugas Perpustakaan
+                    <i data-lucide="lock" class="w-5 h-5"></i> Login Petugas Perpustakaan
+                </h3>
+                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block mb-1 text-slate-300">Username / Email Petugas</label>
+                    <input type="email" id="loginEmail" placeholder="admin@sman4manado.sch.id" required class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block mb-1 text-slate-300">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 font-bold py-2.5 px-4 rounded-lg text-white transition">Masuk Panel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Panel Kelola Admin/Petugas -->
+    <div id="adminModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 space-y-6 text-xs">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-blue-400 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5"></i> Panel Utama Kelola Administrasi Perpustakaan
                 </h3>
                 <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
 
-            <!-- Form Tambah Buku -->
-            <form onsubmit="saveBook(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
-                <h4 class="font-bold text-blue-400 text-sm">Tambah / Edit Buku Fisik</h4>
-                <input type="hidden" id="bookId">
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="bTitle" placeholder="Judul Buku" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="text" id="bAuthor" placeholder="Penulis" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <select id="bCategory" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+            <!-- Tab Menu Admin -->
+            <div class="flex flex-wrap gap-2 border-b border-slate-700 pb-3">
+                <button onclick="switchAdminSubTab('add-book')" class="bg-blue-600 px-3 py-1.5 rounded-lg font-semibold text-white">1. Tambah Buku Fisik</button>
+                <button onclick="switchAdminSubTab('add-member')" class="bg-slate-700 px-3 py-1.5 rounded-lg font-semibold text-white hover:bg-slate-600">2. Tambah Anggota</button>
+                <button onclick="switchAdminSubTab('add-staff')" class="bg-slate-700 px-3 py-1.5 rounded-lg font-semibold text-white hover:bg-slate-600">3. Tambah Petugas</button>
+                <button onclick="switchAdminSubTab('add-event')" class="bg-slate-700 px-3 py-1.5 rounded-lg font-semibold text-white hover:bg-slate-600">4. Tambah Event</button>
+            </div>
+
+            <!-- 1. Form Tambah Buku -->
+            <form id="admin-add-book" onsubmit="saveBook(event)" class="space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+                <h4 class="font-bold text-blue-400 text-sm">Form Tambah Buku Fisik Ruangan</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" id="bTitle" placeholder="Judul Buku" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="bAuthor" placeholder="Nama Pengarang" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="bPublisher" placeholder="Penerbit" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <select id="bCategory" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
                         <option value="Fiksi">Fiksi</option>
                         <option value="Non-Fiksi">Non-Fiksi</option>
                         <option value="Referensi">Referensi</option>
@@ -184,213 +244,285 @@ window.logoutAdmin = function() {
                         <option value="Majalah">Majalah</option>
                         <option value="Horor">Horor</option>
                     </select>
-                    <input type="text" id="bShelf" placeholder="Kode Rak (mis. Rak A-02)" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="number" id="bStock" placeholder="Jumlah Eksemplar Fisik" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    <input type="number" id="bTotal" placeholder="Total Buku Fisik" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="bCover" placeholder="URL Foto Cover Buku (http/https)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
                 </div>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Buku</button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 font-bold py-2.5 rounded-lg text-white">Simpan Buku Ke Katalog</button>
             </form>
 
-            <!-- Form Tambah Anggota -->
-            <form onsubmit="saveMember(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
-                <h4 class="font-bold text-emerald-400 text-sm">Tambah Anggota</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="mNisn" placeholder="NISN / NIP" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="text" id="mName" placeholder="Nama Lengkap" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="text" id="mClass" placeholder="Kelas / Jabatan" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                </div>
-                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Anggota</button>
-            </form>
-
-            <!-- Form Tambah Duta Literasi -->
-            <form onsubmit="saveDuta(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
-                <h4 class="font-bold text-amber-400 text-sm">Tambah Calon / Duta Literasi</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="dName" placeholder="Nama Calon Duta" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="text" id="dClass" placeholder="Kelas" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <select id="dStatus" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                        <option value="Calon Duta">Calon Duta</option>
-                        <option value="Duta Literasi Terpilih">Duta Literasi Terpilih</option>
+            <!-- 2. Form Tambah Anggota -->
+            <form id="admin-add-member" onsubmit="saveMember(event)" class="hidden space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+                <h4 class="font-bold text-emerald-400 text-sm">Form Tambah Anggota Perpustakaan</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" id="mId" placeholder="ID Anggota" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="mName" placeholder="Nama Lengkap" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <select id="mGender" class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                        <option value="Laki-Laki">Laki-Laki</option>
+                        <option value="Perempuan">Perempuan</option>
                     </select>
+                    <select id="mStatus" class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                        <option value="Biasa">Biasa</option>
+                        <option value="Khusus">Khusus</option>
+                        <option value="Luarbiasa">Luarbiasa</option>
+                        <option value="Duta Literasi">Duta Literasi</option>
+                    </select>
+                    <input type="text" id="mClass" placeholder="Kelas (misal: X-1 / XII MIPA)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="date" id="mBirth" placeholder="Tanggal Lahir" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="mAddress" placeholder="Alamat Rumah" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="mWa" placeholder="Nomor WhatsApp (misal: 0812xxxx)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="date" id="mRegisDate" placeholder="Tanggal Registrasi" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="date" id="mExpDate" placeholder="Tanggal Kadaluarsa Kartu" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="mUniqueNo" placeholder="Nomor Unik Masuk Website" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white md:col-span-2">
                 </div>
-                <button type="submit" class="bg-amber-600 hover:bg-amber-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Duta</button>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-2.5 rounded-lg text-white">Simpan Data Anggota</button>
             </form>
 
-            <!-- Form Tambah Event -->
-            <form onsubmit="saveEvent(event)" class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
-                <h4 class="font-bold text-purple-400 text-sm">Tambah Event Perpustakaan</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="eTitle" placeholder="Nama Agenda/Event" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="date" id="eDate" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
-                    <input type="text" id="eLoc" placeholder="Lokasi Kegiatan" required class="bg-slate-800 border border-slate-700 p-2 rounded text-white">
+            <!-- 3. Form Tambah Petugas -->
+            <form id="admin-add-staff" onsubmit="saveStaff(event)" class="hidden space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+                <h4 class="font-bold text-amber-400 text-sm">Form Tambah Petugas Perpustakaan</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" id="sId" placeholder="ID Anggota Petugas" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="sName" placeholder="Nama Lengkap" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <select id="sGender" class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                        <option value="Laki-Laki">Laki-Laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
+                    <input type="text" id="sNip" placeholder="NIP (Opsional)" class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="sJabatan" placeholder="Jabatan" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="sUsername" placeholder="Username" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="password" id="sPassword" placeholder="Password Access" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="sPhoto" placeholder="URL Foto Petugas (http/https)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
                 </div>
-                <button type="submit" class="bg-purple-600 hover:bg-purple-500 font-bold py-2 px-4 rounded text-white w-full">Simpan Event</button>
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 font-bold py-2.5 rounded-lg text-white">Simpan Data Petugas</button>
+            </form>
+
+            <!-- 4. Form Tambah Event -->
+            <form id="admin-add-event" onsubmit="saveEvent(event)" class="hidden space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+                <h4 class="font-bold text-purple-400 text-sm">Form Tambah Event Literasi Mendatang</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" id="eTitle" placeholder="Nama Event" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="number" id="eDuration" placeholder="Durasi Event (Hari)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="eInvolved" placeholder="Siapa yang Terlibat (mis: Seluruh Siswa & Guru)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="eDoorprize" placeholder="Info Doorprize Event" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white">
+                    <input type="text" id="ePoster" placeholder="URL Poster Event (http/https)" required class="bg-slate-800 border border-slate-700 p-2 rounded-lg text-white md:col-span-2">
+                </div>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 font-bold py-2.5 rounded-lg text-white">Publikasikan Event</button>
             </form>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="bg-slate-950 border-t border-slate-800 mt-8 py-6 text-center text-xs text-slate-500 space-y-1">
+    <footer class="bg-slate-950 border-t border-slate-800 mt-12 py-6 text-center text-xs text-slate-500 space-y-1">
         <p class="font-semibold text-slate-400">Perpustakaan SMA Negeri 4 Manado</p>
         <p>Jl. Manguni 11, Kel. Perkamil, Kec. Paal Dua, Kota Manado, Sulawesi Utara</p>
         <p class="text-slate-600 pt-2">&copy; 2026 Perpustakaan SMAN 4 Manado. Hak Cipta dan Dilindungi Undang-Undang.</p>
     </footer>
 
-    <!-- Client Script -->
+    <!-- Script Logika Aplikasi -->
     <script>
         let allBooks = {};
 
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            initCalendar();
             listenRealtimeData();
         });
 
+        // Tampilkan Kalender Hari Ini
+        function initCalendar() {
+            const today = new Date();
+            const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDateDisplay').innerText = today.toLocaleDateString('id-ID', optionsDate);
+            document.getElementById('calendarDay').innerText = today.getDate();
+            document.getElementById('calendarMonthYear').innerText = today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        }
+
+        // Switch Tab Navigasi Utama
         function switchTab(tabName) {
-            ['katalog', 'duta', 'event', 'anggota'].forEach(t => {
-                document.getElementById(`tab-${t}`).classList.add('hidden');
-            });
+            document.getElementById('tab-beranda').classList.add('hidden');
+            document.getElementById('tab-event').classList.add('hidden');
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
         }
 
+        // Switch Tab Internal Admin Modal
+        function switchAdminSubTab(subTabId) {
+            ['add-book', 'add-member', 'add-staff', 'add-event'].forEach(id => {
+                document.getElementById(`admin-${id}`).classList.add('hidden');
+            });
+            document.getElementById(`admin-${subTabId}`).classList.remove('hidden');
+        }
+
+        // Modals
+        function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
+        function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
         function openAdminModal() { document.getElementById('adminModal').classList.remove('hidden'); }
         function closeAdminModal() { document.getElementById('adminModal').classList.add('hidden'); }
 
-        // Menerima Data Realtime dari Firebase
+        // Login Handler
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+
+            window.signInWithEmailAndPassword(window.auth, email, pass)
+                .then(() => {
+                    Swal.fire('Login Berhasil!', 'Selamat datang kembali, Petugas.', 'success');
+                    closeLoginModal();
+                })
+                .catch((err) => {
+                    Swal.fire('Gagal Login', 'Email/Password salah atau akun tidak terdaftar.', 'error');
+                });
+        }
+
+        function logoutPetugas() {
+            window.signOut(window.auth).then(() => {
+                Swal.fire('Logout', 'Anda telah keluar dari mode petugas.', 'info');
+            });
+        }
+
+        // Listen Data Realtime dari Realtime Database
         function listenRealtimeData() {
             // Buku
             window.dbOnValue(window.dbRef(window.db, 'books'), (snapshot) => {
                 allBooks = snapshot.val() || {};
                 renderBooks(allBooks);
             });
-            // Duta Literasi
-            window.dbOnValue(window.dbRef(window.db, 'duta'), (snapshot) => {
-                renderDuta(snapshot.val() || {});
-            });
             // Event
             window.dbOnValue(window.dbRef(window.db, 'events'), (snapshot) => {
                 renderEvents(snapshot.val() || {});
             });
-            // Anggota
-            window.dbOnValue(window.dbRef(window.db, 'members'), (snapshot) => {
-                renderMembers(snapshot.val() || {});
-            });
         }
 
-        // Render Katalog Buku
+        // Render Katalog Buku Ruangan
         function renderBooks(data) {
             const grid = document.getElementById('bookGrid');
             grid.innerHTML = '';
+            
+            if (Object.keys(data).length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 text-xs">Belum ada buku fisik diinputkan.</div>`;
+                return;
+            }
+
             Object.keys(data).forEach(id => {
                 const b = data[id];
+                const available = b.totalBooks - (b.borrowedCount || 0);
                 grid.innerHTML += `
-                    <div class="bg-slate-800 border border-slate-700/80 p-4 rounded-xl flex flex-col justify-between">
+                    <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl overflow-hidden flex flex-col justify-between shadow-md">
                         <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-950 px-2 py-0.5 rounded">${b.category}</span>
-                            <h4 class="font-semibold text-white mt-2">${b.title}</h4>
-                            <p class="text-xs text-slate-400">Penulis: ${b.author}</p>
-                            <p class="text-xs text-slate-400 mt-2">Lokasi Rak: <strong class="text-slate-200">${b.shelf}</strong></p>
+                            <div class="h-44 w-full bg-slate-900 overflow-hidden relative">
+                                <img src="${b.coverUrl}" alt="${b.title}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop'">
+                                <span class="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wider text-blue-300 bg-slate-950/80 backdrop-blur px-2 py-0.5 rounded border border-slate-700">${b.category}</span>
+                            </div>
+                            <div class="p-3">
+                                <h4 class="font-bold text-white text-sm line-clamp-1">${b.title}</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Pengarang: ${b.author}</p>
+                                <p class="text-[11px] text-slate-500">Penerbit: ${b.publisher}</p>
+                            </div>
                         </div>
-                        <div class="mt-4 pt-3 border-t border-slate-700/50 flex justify-between items-center text-xs">
-                            <span class="${b.stock > 0 ? 'text-emerald-400' : 'text-red-400'} font-medium">
-                                ${b.stock > 0 ? 'Tersedia (' + b.stock + ' Eks)' : 'Habis'}
-                            </span>
-                            <button onclick="deleteItem('books', '${id}')" class="text-red-400 hover:text-red-300">Hapus</button>
+                        <div class="p-3 pt-0 border-t border-slate-700/50 mt-2 space-y-2 text-xs">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Tersedia:</span>
+                                <span class="font-bold ${available > 0 ? 'text-emerald-400' : 'text-red-400'}">${available} / ${b.totalBooks} Eks</span>
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="borrowBook('${id}', ${available}, ${b.borrowedCount || 0})" ${available <= 0 ? 'disabled' : ''} class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-semibold py-1.5 rounded text-[11px]">Pinjam Langsung</button>
+                                ${window.auth.currentUser ? `<button onclick="deleteItem('books', '${id}')" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-2 py-1.5 rounded text-[11px]"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
             });
+            lucide.createIcons();
         }
 
-        // Render Duta
-        function renderDuta(data) {
-            const grid = document.getElementById('dutaGrid');
-            grid.innerHTML = '';
-            Object.keys(data).forEach(id => {
-                const d = data[id];
-                grid.innerHTML += `
-                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
-                        <div>
-                            <span class="text-[10px] font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded">${d.status}</span>
-                            <h4 class="font-bold text-white mt-1">${d.name}</h4>
-                            <p class="text-xs text-slate-400">Kelas: ${d.className}</p>
-                        </div>
-                        <button onclick="deleteItem('duta', '${id}')" class="text-xs text-red-400">Hapus</button>
-                    </div>
-                `;
-            });
-        }
-
-        // Render Event
+        // Render Agenda Event
         function renderEvents(data) {
             const grid = document.getElementById('eventGrid');
             grid.innerHTML = '';
+            
+            if (Object.keys(data).length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 text-xs">Belum ada agenda event.</div>`;
+                return;
+            }
+
             Object.keys(data).forEach(id => {
                 const e = data[id];
                 grid.innerHTML += `
-                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] text-purple-400 bg-purple-950 px-2 py-0.5 rounded font-bold">${e.date}</span>
-                            <h4 class="font-bold text-white mt-1">${e.title}</h4>
-                            <p class="text-xs text-slate-400 mt-1">📍 ${e.location}</p>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col md:flex-row">
+                        <img src="${e.posterUrl}" alt="${e.title}" class="w-full md:w-36 h-40 object-cover" onerror="this.src='https://images.unsplash.com/photo-1511578314322-379afb476865?w=500&auto=format&fit=crop'">
+                        <div class="p-4 flex-grow flex flex-col justify-between space-y-2 text-xs">
+                            <div>
+                                <span class="text-[10px] text-purple-300 bg-purple-950 border border-purple-800 px-2 py-0.5 rounded font-bold">Durasi: ${e.duration} Hari</span>
+                                <h4 class="font-bold text-white text-base mt-1">${e.title}</h4>
+                                <p class="text-slate-300 mt-1"><strong>Terlibat:</strong> ${e.involved}</p>
+                                <p class="text-amber-400 mt-0.5">🎁 <strong>Doorprize:</strong> ${e.doorprize}</p>
+                            </div>
+                            ${window.auth.currentUser ? `<button onclick="deleteItem('events', '${id}')" class="text-red-400 hover:text-red-300 text-left w-fit">Hapus Event</button>` : ''}
                         </div>
-                        <button onclick="deleteItem('events', '${id}')" class="text-xs text-red-400">Hapus</button>
                     </div>
                 `;
             });
+            lucide.createIcons();
         }
 
-        // Render Anggota
-        function renderMembers(data) {
-            const grid = document.getElementById('anggotaGrid');
-            grid.innerHTML = '';
-            Object.keys(data).forEach(id => {
-                const m = data[id];
-                grid.innerHTML += `
-                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
-                        <div>
-                            <span class="text-[10px] text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded font-bold">NISN/NIP: ${m.nisn}</span>
-                            <h4 class="font-bold text-white mt-1">${m.name}</h4>
-                            <p class="text-xs text-slate-400">${m.className}</p>
-                        </div>
-                        <button onclick="deleteItem('members', '${id}')" class="text-xs text-red-400">Hapus</button>
-                    </div>
-                `;
+        // Pinjam Buku Langsung (Berkurang Stok Fisik)
+        function borrowBook(id, available, currentBorrowed) {
+            if (available <= 0) return;
+            window.dbUpdate(window.dbRef(window.db, `books/${id}`), {
+                borrowedCount: currentBorrowed + 1
+            }).then(() => {
+                Swal.fire('Berhasil Ditinjau!', 'Transaksi peminjaman dicatat, jumlah ketersediaan fisik tersinkronisasi berkurang 1.', 'success');
             });
         }
 
-        // Simpan Data Ke Firebase Realtime Database
+        // Simpan Data
         function saveBook(e) {
             e.preventDefault();
             const newRef = window.dbPush(window.dbRef(window.db, 'books'));
             window.dbSet(newRef, {
                 title: document.getElementById('bTitle').value,
                 author: document.getElementById('bAuthor').value,
+                publisher: document.getElementById('bPublisher').value,
                 category: document.getElementById('bCategory').value,
-                shelf: document.getElementById('bShelf').value,
-                stock: parseInt(document.getElementById('bStock').value)
+                totalBooks: parseInt(document.getElementById('bTotal').value),
+                borrowedCount: 0,
+                coverUrl: document.getElementById('bCover').value
             });
-            Swal.fire('Berhasil!', 'Buku berhasil disimpan ke Realtime Database', 'success');
+            Swal.fire('Tersimpan!', 'Buku fisik ditambahkan ke katalog.', 'success');
         }
 
         function saveMember(e) {
             e.preventDefault();
             const newRef = window.dbPush(window.dbRef(window.db, 'members'));
             window.dbSet(newRef, {
-                nisn: document.getElementById('mNisn').value,
+                memberId: document.getElementById('mId').value,
                 name: document.getElementById('mName').value,
-                className: document.getElementById('mClass').value
+                gender: document.getElementById('mGender').value,
+                status: document.getElementById('mStatus').value,
+                className: document.getElementById('mClass').value,
+                birthDate: document.getElementById('mBirth').value,
+                address: document.getElementById('mAddress').value,
+                whatsapp: document.getElementById('mWa').value,
+                regisDate: document.getElementById('mRegisDate').value,
+                expDate: document.getElementById('mExpDate').value,
+                uniqueNo: document.getElementById('mUniqueNo').value
             });
-            Swal.fire('Berhasil!', 'Anggota berhasil ditambahkan', 'success');
+            Swal.fire('Tersimpan!', 'Anggota baru telah terdaftar.', 'success');
         }
 
-        function saveDuta(e) {
+        function saveStaff(e) {
             e.preventDefault();
-            const newRef = window.dbPush(window.dbRef(window.db, 'duta'));
+            const newRef = window.dbPush(window.dbRef(window.db, 'staffs'));
             window.dbSet(newRef, {
-                name: document.getElementById('dName').value,
-                className: document.getElementById('dClass').value,
-                status: document.getElementById('dStatus').value
+                staffId: document.getElementById('sId').value,
+                name: document.getElementById('sName').value,
+                gender: document.getElementById('sGender').value,
+                nip: document.getElementById('sNip').value || '-',
+                jabatan: document.getElementById('sJabatan').value,
+                username: document.getElementById('sUsername').value,
+                photoUrl: document.getElementById('sPhoto').value
             });
-            Swal.fire('Berhasil!', 'Data Duta Literasi disimpan', 'success');
+            Swal.fire('Tersimpan!', 'Data petugas baru tersimpan.', 'success');
         }
 
         function saveEvent(e) {
@@ -398,14 +530,16 @@ window.logoutAdmin = function() {
             const newRef = window.dbPush(window.dbRef(window.db, 'events'));
             window.dbSet(newRef, {
                 title: document.getElementById('eTitle').value,
-                date: document.getElementById('eDate').value,
-                location: document.getElementById('eLoc').value
+                duration: document.getElementById('eDuration').value,
+                involved: document.getElementById('eInvolved').value,
+                doorprize: document.getElementById('eDoorprize').value,
+                posterUrl: document.getElementById('ePoster').value
             });
-            Swal.fire('Berhasil!', 'Agenda Event disimpan', 'success');
+            Swal.fire('Tersimpan!', 'Event berhasil dipublikasikan.', 'success');
         }
 
         function deleteItem(path, id) {
-            if(confirm('Hapus data ini dari Realtime Database?')) {
+            if (confirm('Hapus data ini?')) {
                 window.dbRemove(window.dbRef(window.db, `${path}/${id}`));
             }
         }
@@ -419,7 +553,7 @@ window.logoutAdmin = function() {
                 const b = allBooks[id];
                 const matchQuery = b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query);
                 const matchCat = cat === '' || b.category === cat;
-                if(matchQuery && matchCat) filtered[id] = b;
+                if (matchQuery && matchCat) filtered[id] = b;
             });
             renderBooks(filtered);
         }
